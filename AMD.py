@@ -3,44 +3,72 @@ from settings import *
 service = Service(executable_path="chromedriver.exe")
 driver = webdriver.Chrome(service=service)
 
+
+def accept_cookies():
+    try:
+        cookies = driver.find_element(By.XPATH, '//*[@id="CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll"]')
+        cookies.click()
+    except:
+        print("No cookies button found / Problem with the cookies")
+
+def log_in():
+    try:
+        login = driver.find_element(By.XPATH, '//*[@id="navigation"]/div/nav/div[3]/ul/li[1]/a')
+        login.click()
+        time.sleep(0.1)
+        email = driver.find_element(By.XPATH, '//*[@id="email"]')
+        email.click()
+        email.clear()
+        email.send_keys("thomaslarosemasson@gmail.com")
+        password = driver.find_element(By.XPATH, '//*[@id="password"]')
+        password.clear()
+        password.send_keys("7#@24&sv4MRzUe*fEeCK")
+        password.send_keys(Keys.ENTER)
+        
+    except:
+        print("No login button found / Problem with the login")
+
+
 driver.get("https://freemusicarchive.org/music/charts/this-month")
+time.sleep(0.3)
+accept_cookies()
+time.sleep(0.3)
+log_in()
+time.sleep(0.5)
 
-musiques = driver.find_elements(By.XPATH, "/html/body/div[2]/div[3]/div[2]/div[3]")
+musiques = driver.find_elements(By.CLASS_NAME, "play-item")
+nb_downloads = 0
+for i in range(len(musiques)):
+    retries = 3
+    while retries > 0:
+        try:
+            current_music = driver.find_elements(By.CLASS_NAME, "play-item")[i]
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", current_music)
+            WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable(current_music)
+            )
+            current_music.click()
+            download_arrow = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, f"/html/body/div[2]/div[3]/div[2]/div[3]/div[{i+1}]/span[7]/a[1]"))
+            )
+            download_arrow.click()
+            confirm_button = WebDriverWait(driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, '//*[@id="downloadOverlay"]/div[2]/div[1]/div[2]/a'))
+            )
+            confirm_button.click()
+            nb_downloads += 1
+            time.sleep(0.3)
+            break
+            
+        except (NoSuchElementException, StaleElementReferenceException) as e:
+            retries -= 1
+            time.sleep(0.3)
+            if retries == 0:
+                print(f"Échec sur la musique {i+1}")
+                continue
 
-musiques = musiques[0].find_elements(By.TAG_NAME, "li")
+#driver.quit()
 
-
-
-""""
-password = driver.find_element(By.CLASS_NAME, "fr-password__input")
-password.clear()
-password.send_keys("bidc38&abPS7#Po7&LH@")
-password.send_keys(Keys.ENTER)
-
-driver.get("https://dossier.parcoursup.fr/Candidat/authentification?redirect=compte")
-
-time.sleep(1)
-driver.execute_script("window.scrollTo(0, 1000)")
-btn_afficher = driver.find_element(By.XPATH, "/html/body/main/div[2]/div[2]/div[2]/div/div[2]/div[2]/div[3]/div[1]/button")
-btn_afficher.click()
-
-time.sleep(1)
-places = driver.find_elements(By.XPATH, "//*[@id='tableauxAdmissions_voeuxEnAttente_3']/ul/li/div/ul/li[2]/span[2]")
-filieres = driver.find_elements(By.XPATH, "//*[@id='tableauxAdmissions_voeuxEnAttente_3']/ul/li/div[2]/div/div[1]/p[2]")
-ecoles = driver.find_elements(By.XPATH, "//*[@id='tableauxAdmissions_voeuxEnAttente_3']/ul/li/div[2]/div/div[1]/p[1]")
-
-messages = []
-for i in range(len(ecoles)):
-    message = f"->{places[i].text}ème pour {filieres[i].text}"
-    messages.append(message)
-    message_bis = f"au {ecoles[i].text}"
-    messages.append(message_bis)
-messages.append(" /!\ Message envoyé depuis un script python automatique /!\ ")
-"""
-
-driver.quit()
-
-messages = []
 #---------------------------------------------------------------------------------------
 
 class Bouton():
@@ -126,12 +154,9 @@ while run:
 
     CLOCK.tick(60)
     SCREEN.fill(clr_background)
-    draw_text("Files d'attente ParcourSup:", FONT_LILITAONE_50, clr_text, SCREEN_WIDTH // 2 - 30, 45)
-    draw_text("© TraZe 2024", FONT_LILITAONE_10, clr_text, SCREEN_WIDTH - 30, SCREEN_HEIGHT - 5)
-
-    for i in range(len(messages)):
-        draw_text(f"{messages[i]}", FONT_LILITAONE_30, clr_text, SCREEN_WIDTH // 2, 95 + 50 * i + 30 * (i//2))
-
+    draw_text(f"Nombre de musiques téléchargées: {nb_downloads}", FONT_LILITAONE_50, clr_text, SCREEN_WIDTH // 2 - 30, 45)
+    draw_text("© TraZe 2025", FONT_LILITAONE_10, clr_text, SCREEN_WIDTH - 30, SCREEN_HEIGHT - 5)
+    
     if not menu_colors:
         if bouton_colors.draw():
             menu_colors = True
